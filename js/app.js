@@ -83,16 +83,9 @@ function compute() {
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-// What each result code means, for people who don't know racing jargon.
-const STATUS_NAMES = {
-  FIN: "Finished",
-  DNF: "Did not finish",
-  RET: "Retired",
-  DNS: "Did not start",
-  OCS: "Over the line early",
-  DSQ: "Disqualified",
-  DNC: "Didn't race",
-};
+// Opens the result code explanations (#codes in index.html).
+const codesButton = (label = "?") =>
+  `<button type="button" class="${label === "?" ? "info" : "link"}" popovertarget="codes" aria-label="What the result codes mean">${label}</button>`;
 
 const boatById = (id) => data.boats.find((b) => b.id === id);
 const boatLabel = (b) => (b ? `${esc(b.name)}${b.sailNo ? ` <span class="muted">${esc(b.sailNo)}</span>` : ""}` : "?");
@@ -258,10 +251,9 @@ function raceResults({ byRace }) {
   const otherRows = [...others, ...dnc]
     .map(
       (r) => `<tr>
-        <td class="n place muted">–</td>
+        <td class="n place">${codesButton(r.status)}</td>
         <td class="lead">${boatLabel(boatById(r.boatId))}</td>
-        <td></td><td class="n c-h1" data-label="Handicap">${h(r.h1)}</td><td></td><td></td>
-        <td class="c-note">${STATUS_NAMES[r.status] ?? r.status}</td>
+        <td></td><td class="n c-h1" data-label="Handicap">${h(r.h1)}</td><td></td><td></td><td></td>
         <td class="n c-new" data-label="New handicap">${h(r.h2)}</td>
         <td class="n c-change" data-label="Change">${change(r.h1, r.h2)}</td>
       </tr>`,
@@ -300,9 +292,9 @@ function raceEditor() {
       const invalid = e.status === "FIN" && e.time && elapsed == null;
       return `<tr>
         <td class="lead">${boatLabel(b)}</td>
-        <td><select data-entry="status" data-id="${b.id}" aria-label="Result">
-          ${STATUSES.map((s) => `<option value="${s}" ${s === e.status ? "selected" : ""}>${STATUS_NAMES[s]}</option>`).join("")}
-        </select></td>
+        <td><span class="result-pick"><select data-entry="status" data-id="${b.id}" aria-label="Result">
+          ${STATUSES.map((s) => `<option ${s === e.status ? "selected" : ""}>${s}</option>`).join("")}
+        </select>${codesButton()}</span></td>
         <td class="time-cell"><input class="time ${invalid ? "invalid" : ""}" data-entry="time" data-id="${b.id}" value="${esc(e.time)}" inputmode="decimal" aria-label="Time"
           placeholder="${finishMode ? "hh:mm:ss" : "h:mm:ss"}" ${e.status === "FIN" ? "" : "disabled"} /></td>
         <td class="n muted" data-elapsed="${b.id}">${elapsed != null ? formatDuration(elapsed) : ""}</td>
@@ -322,7 +314,7 @@ function raceEditor() {
       </label>
       ${finishMode ? `<label>Start time<input class="time" data-draft="start" value="${esc(d.start)}" placeholder="hh:mm:ss" inputmode="decimal" /></label>` : ""}
     </div>
-    <p class="hint">Set each boat that raced to Finished and enter its time. Leave boats that didn't come out as Didn't race. Any other result (Did not finish, Retired…) counts as taking part but keeps the boat's handicap. Times can be typed with dots instead of colons, e.g. 1.12.30.</p>
+    <p class="hint">Set each boat that raced to FIN and enter its time. Leave boats that didn't come out as DNC. Any other code (DNF, RET…) counts as taking part but keeps the boat's handicap. Tap ? to see what each code means. Times can be typed with dots instead of colons, e.g. 1.12.30.</p>
     <div class="table-wrap"><table class="stack entries ${finishMode ? "finish" : ""}">
       <thead><tr><th>Boat</th><th>Result</th><th>${finishMode ? "Finish time" : "Elapsed time"}</th><th class="n">Elapsed</th></tr></thead>
       <tbody>${rows}</tbody>

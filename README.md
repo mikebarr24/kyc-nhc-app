@@ -7,7 +7,7 @@ The maths follows the May 2015 NHC algorithm as written up by HalSail: <https://
 ## Using it
 
 1. **Fleet:** add each boat with its NHC base number (H0).
-2. **Races → New race:** set each boat that raced to *Finished* and enter its elapsed time (or switch to finish clock times and give the start time). Leave boats that didn't sail as *Didn't race*.
+2. **Races → New race:** set each boat that raced to `FIN` and enter its elapsed time (or switch to finish clock times and give the start time). Leave boats that didn't sail as `DNC`. The **?** beside each result explains the codes.
 3. **Save & calculate:** shows places, corrected times and each boat's new handicap for the next race.
 4. **Handicaps:** shows how every boat's handicap has moved over the season.
 

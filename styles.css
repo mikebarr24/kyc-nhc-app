@@ -127,6 +127,22 @@ table.sticky-first td:first-child {
   white-space: normal;
   min-width: 8em;
 }
+.result-pick { display: inline-flex; gap: 6px; align-items: center; }
+button.info { width: 2.2em; height: 2.2em; padding: 0; border-radius: 50%; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+
+#codes {
+  max-width: min(calc(100vw - 32px), 380px);
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+}
+#codes::backdrop { background: rgb(0 0 0 / 0.4); }
+#codes dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 0 0 12px; }
+#codes dt { font-weight: 600; }
+#codes dd { margin: 0; }
+
 .hint { color: var(--muted); font-size: 13px; margin: 4px 0 12px; }
 .empty { color: var(--muted); padding: 24px 0; text-align: center; }
 
@@ -163,8 +179,8 @@ table.stack.cards td[data-label]::before { content: attr(data-label); display: b
 table.stack.cards tr.extreme { background: var(--flag); }
 table.stack.cards tr.extreme td { background: none; }
 
-table.results.cards td.place { flex: 0 0 2.5em; font-weight: 600; }
-table.results.cards td.lead { flex-basis: calc(100% - 2.5em); }
+table.results.cards td.place { flex: 0 0 3.2em; font-weight: 600; }
+table.results.cards td.lead { flex-basis: calc(100% - 3.2em); }
 table.results.cards td:not(.place):not(.lead) { flex: 0 0 33.333%; }
 table.results.cards .c-corrected { order: 1; }
 table.results.cards .c-new { order: 2; }
@@ -174,8 +190,6 @@ table.results.cards .c-h1 { order: 5; }
 table.results.cards .c-achieved { order: 6; }
 table.results.cards .c-note { order: 7; flex-basis: 100% !important; font-size: 13px; }
 
-table.entries.cards td:has(select) { flex: 1 1 10em; }
-table.entries.cards select { width: 100%; }
 table.entries.cards td.time-cell { flex: 1 1 7em; }
 /* With elapsed times typed in, the preview would just repeat them. */
 table.entries.cards:not(.finish) td[data-elapsed] { display: none; }
@@ -195,6 +209,7 @@ table.races.cards td:not(.lead) { flex: 1 1 0; }
 /* Bigger tap targets on touch screens. */
 @media (pointer: coarse) {
   button:not(.link), .button, input, select { min-height: 40px; }
+  button.info { width: 40px; height: 40px; }
 }
 
 @media print {

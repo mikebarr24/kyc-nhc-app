@@ -18,6 +18,20 @@
       <div id="account"></div>
     </header>
     <main id="app"></main>
+    <div id="codes" popover>
+      <h2>Result codes</h2>
+      <dl>
+        <dt>FIN</dt><dd>Finished. Enter its time.</dd>
+        <dt>DNF</dt><dd>Did not finish: started but didn't finish.</dd>
+        <dt>RET</dt><dd>Retired from the race.</dd>
+        <dt>DNS</dt><dd>Did not start: came out but didn't start.</dd>
+        <dt>OCS</dt><dd>On course side: over the start line early and didn't go back.</dd>
+        <dt>DSQ</dt><dd>Disqualified.</dd>
+        <dt>DNC</dt><dd>Did not compete: didn't come out at all.</dd>
+      </dl>
+      <p class="hint">Only finishers' handicaps change. Every code except DNC still counts as having sailed this season.</p>
+      <div class="actions"><button class="primary" popovertarget="codes" popovertargetaction="hide">Close</button></div>
+    </div>
     <footer>
       Calculations follow the RYA NHC algorithm (May 2015) as described by
       <a href="https://halsail.com/Help/pdfFaq?Faqitem=NhcMaths" target="_blank" rel="noopener">HalSail</a>.
