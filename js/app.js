@@ -117,6 +117,15 @@ function render() {
   else if (view.raceId && data.races.some((r) => r.id === view.raceId)) body = raceResults(results);
   else body = raceList(results);
   app.innerHTML = banner + body;
+  fitTables();
+}
+
+// Tables that would need sideways scrolling switch to one card per row.
+function fitTables() {
+  for (const t of document.querySelectorAll("table.stack")) {
+    t.classList.remove("cards");
+    t.classList.toggle("cards", t.offsetWidth > t.parentElement.clientWidth);
+  }
 }
 
 function accountView() {
@@ -187,9 +196,9 @@ function raceList({ races, byRace }) {
       const finishers = rows.filter((r) => r.place != null).sort((a, b) => a.place - b.place);
       const winner = finishers[0] ? boatById(finishers[0].boatId) : null;
       return `<tr>
-        <td><button class="link" data-action="open-race" data-id="${race.id}">${esc(race.name || "Race")}</button>${race.date ? `<div class="muted small">${esc(race.date)}</div>` : ""}</td>
-        <td class="n">${finishers.length}</td>
-        <td>${winner ? boatLabel(winner) : '<span class="muted">-</span>'}</td>
+        <td class="lead"><button class="link" data-action="open-race" data-id="${race.id}">${esc(race.name || "Race")}</button>${race.date ? `<div class="muted small">${esc(race.date)}</div>` : ""}</td>
+        <td class="n" data-label="Finishers">${finishers.length}</td>
+        <td data-label="Winner">${winner ? boatLabel(winner) : '<span class="muted">-</span>'}</td>
       </tr>`;
     })
     .join("");
@@ -205,7 +214,7 @@ function raceList({ races, byRace }) {
     <h2>Races</h2>
     ${
       empty ||
-      `<div class="table-wrap"><table class="wrap">
+      `<div class="table-wrap"><table class="stack races wrap">
         <thead><tr><th>Race</th><th class="n">Finishers</th><th>Winner</th></tr></thead>
         <tbody>${rows}</tbody></table></div>`
     }
@@ -292,7 +301,7 @@ function raceEditor() {
     <h2>${d.isNew ? "New race" : "Edit race"}</h2>
     <div class="row">
       <label>Date<input type="date" data-draft="date" value="${esc(d.date)}" /></label>
-      <label>Name<input data-draft="name" value="${esc(d.name)}" placeholder="e.g. Wednesday Race 5" /></label>
+      <label class="wide">Name<input data-draft="name" value="${esc(d.name)}" placeholder="e.g. Wednesday Race 5" /></label>
       <label>Times entered as
         <select data-draft="timeMode">
           <option value="elapsed" ${finishMode ? "" : "selected"}>Elapsed times</option>
@@ -321,16 +330,16 @@ function handicapsView({ races, byRace, current }) {
       const cells = races
         .map((r) => {
           const row = (byRace.get(r.id) || []).find((x) => x.boatId === b.id);
-          return `<td class="n">${row ? h(row.h2) : ""}${row?.place ? ` <span class="muted">(${row.place})</span>` : ""}</td>`;
+          return `<td class="n" data-label="${esc(r.name || "Race")}">${row ? h(row.h2) : ""}${row?.place ? ` <span class="muted">(${row.place})</span>` : ""}</td>`;
         })
         .join("");
-      return `<tr><td>${boatLabel(b)}</td><td class="n">${h(b.h0)}</td>${cells}<td class="n"><strong>${h(current.get(b.id))}</strong></td></tr>`;
+      return `<tr><td class="lead">${boatLabel(b)}</td><td class="n" data-label="Base">${h(b.h0)}</td>${cells}<td class="n" data-label="Next race"><strong>${h(current.get(b.id))}</strong></td></tr>`;
     })
     .join("");
   return `<section class="panel">
     <h2>Handicap progression</h2>
-    <p class="hint">Handicap after each race (place in brackets). The last column is the handicap for the next race.</p>
-    <div class="table-wrap"><table class="sticky-first">
+    <p class="hint">Handicap after each race (place in brackets), and the handicap each boat takes into the next race.</p>
+    <div class="table-wrap"><table class="stack handicaps sticky-first">
       <thead><tr><th>Boat</th><th class="n">Base</th>${head}<th class="n">Next race</th></tr></thead>
       <tbody>${body}</tbody>
     </table></div>
@@ -528,6 +537,12 @@ async function importData(file) {
 }
 
 // ---- start ----
+
+let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(fitTables, 100);
+});
 
 // Open the club with this code. Returns false (with status.clubError set) if it can't.
 async function connect(code) {

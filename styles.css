@@ -148,38 +148,45 @@ table.sticky-first td:first-child {
   .landing { margin: 24px auto; }
 
   .row label { flex: 1 1 9em; }
+  .row label.wide { flex-basis: 14em; }
   .row label input, .row label select { width: 100%; }
-
-  /* Tables marked .stack become one card per row: the .lead cell on its own line, then labelled values. */
-  table.stack thead { display: none; }
-  table.stack tr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 0; padding: 10px 0; border-bottom: 1px solid var(--border); }
-  table.stack td { border: 0; padding: 0 8px 0 0; white-space: normal; text-align: left; }
-  table.stack td:empty { display: none; }
-  table.stack td.lead { flex: 1 0 100%; font-weight: 600; }
-  table.stack td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: normal; color: var(--muted); }
-  table.stack tr.extreme { background: var(--flag); }
-  table.stack tr.extreme td { background: none; }
-
-  table.results td.place { flex: 0 0 2.5em; font-weight: 600; }
-  table.results td.lead { flex-basis: calc(100% - 2.5em); }
-  table.results td:not(.place):not(.lead) { flex: 0 0 33.333%; }
-  table.results .c-corrected { order: 1; }
-  table.results .c-new { order: 2; }
-  table.results .c-change { order: 3; }
-  table.results .c-elapsed { order: 4; }
-  table.results .c-h1 { order: 5; }
-  table.results .c-achieved { order: 6; }
-  table.results .c-note { order: 7; flex-basis: 100% !important; font-size: 13px; }
-
-  table.entries td.time-cell { flex: 1; }
-  table.entries input.time { width: 100%; }
-
-  table.fleet td.lead input { width: 100%; font-weight: 600; }
-  table.fleet td:not(.lead) { flex: 1 1 0; }
-  table.fleet td[data-label="Sail no."] { flex-grow: 1.4; }
-  table.fleet td input.num { width: 100%; }
-  table.fleet td.end { flex: 0 0 auto; align-self: end; }
 }
+
+/* A .stack table that would need sideways scrolling gets .cards (see fitTables in app.js):
+   one card per row, the .lead cell on its own line, then labelled values. */
+table.stack.cards thead { display: none; }
+table.stack.cards tr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 0; padding: 10px 0; border-bottom: 1px solid var(--border); }
+table.stack.cards td { border: 0; padding: 0 8px 0 0; white-space: normal; text-align: left; }
+table.stack.cards td:empty { display: none; }
+table.stack.cards td.lead { flex: 1 0 100%; font-weight: 600; }
+table.stack.cards td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: normal; color: var(--muted); }
+table.stack.cards tr.extreme { background: var(--flag); }
+table.stack.cards tr.extreme td { background: none; }
+
+table.results.cards td.place { flex: 0 0 2.5em; font-weight: 600; }
+table.results.cards td.lead { flex-basis: calc(100% - 2.5em); }
+table.results.cards td:not(.place):not(.lead) { flex: 0 0 33.333%; }
+table.results.cards .c-corrected { order: 1; }
+table.results.cards .c-new { order: 2; }
+table.results.cards .c-change { order: 3; }
+table.results.cards .c-elapsed { order: 4; }
+table.results.cards .c-h1 { order: 5; }
+table.results.cards .c-achieved { order: 6; }
+table.results.cards .c-note { order: 7; flex-basis: 100% !important; font-size: 13px; }
+
+table.entries.cards td.time-cell { flex: 1; }
+table.entries.cards input.time { width: 100%; }
+
+/* Name and Remove on the first line, then sail no., H0 and current. */
+table.fleet.cards tr { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 8px; }
+table.fleet.cards td { padding: 0; }
+table.fleet.cards td.lead { grid-column: 1 / 3; }
+table.fleet.cards td.end { grid-column: 3; grid-row: 1; }
+table.fleet.cards td input { width: 100%; }
+
+table.handicaps.cards tr { align-items: flex-start; }
+table.handicaps.cards td:not(.lead) { flex: 0 0 33.333%; padding-bottom: 4px; }
+table.races.cards td:not(.lead) { flex: 1 1 0; }
 
 /* Bigger tap targets on touch screens. */
 @media (pointer: coarse) {
