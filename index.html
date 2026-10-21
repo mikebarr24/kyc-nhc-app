@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NHC Results</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>NHC Results</h1>
+      <nav>
+        <button data-tab="races" class="tab">Races</button>
+        <button data-tab="fleet" class="tab">Fleet</button>
+        <button data-tab="handicaps" class="tab">Handicaps</button>
+        <button data-tab="data" class="tab">Data</button>
+      </nav>
+    </header>
+    <main id="app"></main>
+    <footer>
+      Calculations follow the RYA NHC algorithm (May 2015) as described by
+      <a href="https://halsail.com/Help/pdfFaq?Faqitem=NhcMaths" target="_blank" rel="noopener">HalSail</a>.
+    </footer>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

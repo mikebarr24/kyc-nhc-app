@@ -1,0 +1,8 @@
+{
+  "name": "kyc-nhc-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/"
+  }
+}
