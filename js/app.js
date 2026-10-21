@@ -491,7 +491,7 @@ document.addEventListener("input", (ev) => {
 });
 
 function exportData() {
-  const blob = new Blob([JSON.stringify({ app: "kyc-nhc", version: 1, ...data }, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify({ app: "nhc", version: 1, ...data }, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `nhc-results-${new Date().toISOString().slice(0, 10)}.json`;

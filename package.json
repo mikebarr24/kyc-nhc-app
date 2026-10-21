@@ -1,5 +1,5 @@
 {
-  "name": "kyc-nhc-app",
+  "name": "nhc-app",
   "private": true,
   "type": "module",
   "scripts": {

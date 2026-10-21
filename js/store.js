@@ -3,7 +3,7 @@
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 
-const STORAGE_KEY = "kyc-nhc-data-v1";
+const STORAGE_KEY = "nhc-data-v1";
 
 export async function createStore() {
   if (SUPABASE_URL && SUPABASE_ANON_KEY) {
