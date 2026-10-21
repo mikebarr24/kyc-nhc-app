@@ -5,16 +5,29 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 
 const STORAGE_KEY = "nhc-data-v1";
 
-export async function createStore() {
-  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm");
-    return new SupabaseStore(createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
-  }
+// With Supabase, each club's data is opened with its code (see openClub).
+export const isShared = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+export function openLocal() {
   return new LocalStore();
+}
+
+// Returns the club's store, or null if no club has this code.
+export async function openClub(code) {
+  const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm");
+  // The database only shows rows for the club whose code comes in this header.
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false },
+    global: { headers: { "x-club-code": code.trim().toLowerCase() } },
+  });
+  const { data, error } = await db.from("clubs").select("id, name").maybeSingle();
+  if (error) throw error;
+  return data ? new SupabaseStore(db, data) : null;
 }
 
 class LocalStore {
   shared = false;
+  club = null;
   data = { boats: [], races: [] };
 
   async load() {
@@ -66,12 +79,8 @@ class LocalStore {
     this.#persist();
   }
 
-  // Local data is always editable.
-  user() {
-    return { email: null };
-  }
-  onAuthChange() {}
   onRemoteChange() {}
+  close() {}
 }
 
 const boatToRow = (b) => ({ id: b.id, name: b.name, sail_no: b.sailNo || null, h0: b.h0 });
@@ -95,19 +104,19 @@ const rowToRace = (r) => ({
 
 class SupabaseStore {
   shared = true;
-  #session = null;
 
-  constructor(client) {
+  constructor(client, club) {
     this.db = client;
+    this.club = club;
+    // Tells other open copies of this club's page that something changed.
+    this.channel = client.channel(`club:${club.id}`);
   }
 
   async load() {
-    const [{ data: session }, boats, races] = await Promise.all([
-      this.db.auth.getSession(),
+    const [boats, races] = await Promise.all([
       this.db.from("boats").select("*").order("created_at"),
       this.db.from("races").select("*").order("created_at"),
     ]);
-    this.#session = session.session;
     for (const res of [boats, races]) if (res.error) throw res.error;
     return { boats: boats.data.map(rowToBoat), races: races.data.map(rowToRace) };
   }
@@ -115,10 +124,15 @@ class SupabaseStore {
   async #check(promise) {
     const { error } = await promise;
     if (error) throw error;
+    this.channel.send({ type: "broadcast", event: "changed", payload: {} });
+  }
+
+  #row(row) {
+    return { ...row, club_id: this.club.id };
   }
 
   saveBoat(boat) {
-    return this.#check(this.db.from("boats").upsert(boatToRow(boat)));
+    return this.#check(this.db.from("boats").upsert(this.#row(boatToRow(boat)), { onConflict: "club_id,id" }));
   }
 
   async deleteBoat(id) {
@@ -132,7 +146,7 @@ class SupabaseStore {
   }
 
   saveRace(race) {
-    return this.#check(this.db.from("races").upsert(raceToRow(race)));
+    return this.#check(this.db.from("races").upsert(this.#row(raceToRow(race)), { onConflict: "club_id,id" }));
   }
 
   deleteRace(id) {
@@ -144,30 +158,9 @@ class SupabaseStore {
     await this.#check(this.db.from("boats").delete().neq("id", ""));
     // Stagger created_at so the original order is kept.
     const t0 = Date.now();
-    const stamp = (row, i) => ({ ...row, created_at: new Date(t0 + i).toISOString() });
+    const stamp = (row, i) => ({ ...this.#row(row), created_at: new Date(t0 + i).toISOString() });
     if (data.boats.length) await this.#check(this.db.from("boats").insert(data.boats.map(boatToRow).map(stamp)));
     if (data.races.length) await this.#check(this.db.from("races").insert(data.races.map(raceToRow).map(stamp)));
-  }
-
-  user() {
-    return this.#session?.user ?? null;
-  }
-
-  async signIn(email) {
-    const redirect = location.origin + location.pathname;
-    const { error } = await this.db.auth.signInWithOtp({ email, options: { emailRedirectTo: redirect } });
-    if (error) throw error;
-  }
-
-  async signOut() {
-    await this.db.auth.signOut();
-  }
-
-  onAuthChange(callback) {
-    this.db.auth.onAuthStateChange((_event, session) => {
-      this.#session = session;
-      callback();
-    });
   }
 
   onRemoteChange(callback) {
@@ -176,10 +169,10 @@ class SupabaseStore {
       clearTimeout(timer);
       timer = setTimeout(callback, 300);
     };
-    this.db
-      .channel("nhc")
-      .on("postgres_changes", { event: "*", schema: "public", table: "boats" }, debounced)
-      .on("postgres_changes", { event: "*", schema: "public", table: "races" }, debounced)
-      .subscribe();
+    this.channel.on("broadcast", { event: "changed" }, debounced).subscribe();
+  }
+
+  close() {
+    this.db.removeAllChannels();
   }
 }

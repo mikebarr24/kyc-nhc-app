@@ -6,16 +6,17 @@ import {
   elapsedBetween,
   formatDuration,
 } from "./nhc.js";
-import { createStore } from "./store.js";
+import { isShared, openLocal, openClub } from "./store.js";
 
 // ---- state ----
 
 let store;
 let data = { boats: [], races: [] };
 let view = { tab: "races", raceId: null, draft: null };
-let status = { loading: true, error: null, busy: false, signInSent: null };
+let status = { loading: true, error: null, busy: false, clubError: null };
 
-const canEdit = () => !!store?.user();
+const CLUB_KEY = "nhc-club-code";
+const canEdit = () => !!store;
 
 async function reload() {
   try {
@@ -100,9 +101,12 @@ function raceTitle(race) {
 
 function render() {
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === view.tab));
+  document.querySelector("nav").hidden = !store;
   document.getElementById("account").innerHTML = accountView();
+  document.body.classList.toggle("busy", status.busy);
   const app = document.getElementById("app");
   if (status.loading) return (app.innerHTML = `<p class="empty">Loading…</p>`);
+  if (!store) return (app.innerHTML = landingView());
   const banner = status.error ? `<p class="panel error">${esc(status.error)}</p>` : "";
   const results = compute();
   let body;
@@ -113,20 +117,23 @@ function render() {
   else if (view.raceId && data.races.some((r) => r.id === view.raceId)) body = raceResults(results);
   else body = raceList(results);
   app.innerHTML = banner + body;
-  document.body.classList.toggle("busy", status.busy);
 }
 
 function accountView() {
-  if (!store?.shared) return "";
-  const user = store.user();
-  if (user) {
-    return `<span class="muted">${esc(user.email)}</span> <button data-action="sign-out">Sign out</button>`;
-  }
-  if (status.signInSent) return `<span class="muted">Check ${esc(status.signInSent)} for a sign-in link</span>`;
-  return `<form data-form="sign-in" class="signin">
-    <input type="email" name="email" required placeholder="Email to sign in and edit" />
-    <button type="submit">Send link</button>
-  </form>`;
+  if (!store?.club) return "";
+  return `<strong>${esc(store.club.name)}</strong> <button data-action="change-club">Change club</button>`;
+}
+
+function landingView() {
+  return `<section class="panel landing">
+    <h2>Open your club</h2>
+    <p class="hint">Enter the code your club gave you to see and enter its results.</p>
+    <form data-form="club" class="row">
+      <input name="code" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Club code" aria-label="Club code" />
+      <button class="primary" type="submit">Open</button>
+    </form>
+    ${status.clubError ? `<p class="error">${esc(status.clubError)}</p>` : ""}
+  </section>`;
 }
 
 function fleetView({ current }) {
@@ -166,13 +173,9 @@ function fleetView({ current }) {
             <label>Base handicap<input name="h0" required class="num" inputmode="decimal" placeholder="0.950" /></label>
             <button class="primary" type="submit">Add boat</button>
           </form>`
-        : signInHint()
+        : ""
     }
   </section>`;
-}
-
-function signInHint() {
-  return store.shared ? `<p class="hint">Sign in at the top of the page to add or edit boats and races.</p>` : "";
 }
 
 function raceList({ races, byRace }) {
@@ -208,7 +211,6 @@ function raceList({ races, byRace }) {
         <tbody>${rows}</tbody></table></div>`
     }
     ${edit && data.boats.length ? `<div class="actions"><button class="primary" data-action="new-race">New race</button></div>` : ""}
-    ${edit ? "" : signInHint()}
   </section>`;
 }
 
@@ -339,7 +341,7 @@ function handicapsView({ races, byRace, current }) {
 function dataView() {
   const edit = canEdit();
   const hint = store.shared
-    ? "Results are shared: everyone who opens this page sees the same data. Export a file now and then as a backup."
+    ? "Results are shared with everyone who has your club's code. Export a file now and then as a backup."
     : "Everything is saved in this browser only. To move to another device, export a file and import it there.";
   return `<section class="panel">
     <h2>Data</h2>
@@ -419,10 +421,19 @@ document.addEventListener("click", (ev) => {
     case "export":
       return exportData();
     case "clear":
-      if (!confirm(store.shared ? "Delete ALL boats and races for everyone? Export first if you want a copy." : "Delete all boats and races from this browser? Export first if you want a copy.")) return;
+      if (!confirm(store.shared ? "Delete ALL of the club's boats and races, for everyone? Export first if you want a copy." : "Delete all boats and races from this browser? Export first if you want a copy.")) return;
       return persist(() => store.replaceAll({ boats: [], races: [] }));
-    case "sign-out":
-      return store.signOut();
+    case "change-club":
+      try {
+        localStorage.removeItem(CLUB_KEY);
+      } catch {
+        // nothing saved
+      }
+      store.close();
+      store = null;
+      data = { boats: [], races: [] };
+      view = { tab: "races", raceId: null, draft: null };
+      break;
     default:
       return;
   }
@@ -434,15 +445,19 @@ document.addEventListener("submit", async (ev) => {
   if (!form) return;
   ev.preventDefault();
   const f = new FormData(ev.target);
-  if (form === "sign-in") {
-    const email = String(f.get("email")).trim();
+  if (form === "club") {
+    const code = String(f.get("code")).trim();
+    status.busy = true;
+    render();
+    const opened = await connect(code);
+    status.busy = false;
+    if (!opened) return render();
     try {
-      await store.signIn(email);
-      status.signInSent = email;
-      render();
-    } catch (e) {
-      alert(`Couldn't send sign-in link: ${e.message}`);
+      localStorage.setItem(CLUB_KEY, code);
+    } catch {
+      // they'll just have to enter it again next time
     }
+    await reload();
   } else if (form === "add-boat") {
     const h0 = Number(String(f.get("h0")).trim());
     if (!(h0 > 0)) return alert("Base handicap must be a positive number, e.g. 0.950");
@@ -515,22 +530,39 @@ async function importData(file) {
 
 // ---- start ----
 
-(async () => {
-  render();
+// Open the club with this code. Returns false (with status.clubError set) if it can't.
+async function connect(code) {
+  status.clubError = null;
   try {
-    store = await createStore();
+    store = await openClub(code);
   } catch (e) {
-    status.loading = false;
-    status.error = `Couldn't connect to the results database: ${e.message}`;
-    return render();
+    status.clubError = `Couldn't connect to the results database: ${e.message}`;
+    return false;
   }
-  store.onAuthChange(() => {
-    status.signInSent = null;
-    render();
-  });
+  if (!store) {
+    status.clubError = "No club has that code. Check it and try again.";
+    return false;
+  }
   store.onRemoteChange(() => {
     // Don't yank an in-progress race entry out from under the editor.
     if (!view.draft) reload();
   });
-  await reload();
+  return true;
+}
+
+(async () => {
+  render();
+  if (!isShared) {
+    store = openLocal();
+    return reload();
+  }
+  let saved = null;
+  try {
+    saved = localStorage.getItem(CLUB_KEY);
+  } catch {
+    // nothing saved
+  }
+  if (saved && (await connect(saved))) return reload();
+  status.loading = false;
+  render();
 })();

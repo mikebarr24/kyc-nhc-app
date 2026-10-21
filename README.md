@@ -15,18 +15,27 @@ Results are recalculated from the first race every time, so fixing a time in an 
 
 ### Sharing results
 
-Results are stored in a [Supabase](https://supabase.com) database, so everyone who opens the site sees the same data and new results appear without refreshing. Anyone can view; to edit, enter your email at the top of the page and click the sign-in link you're sent.
+Results are stored in a [Supabase](https://supabase.com) database. Each club has its own code: open the site, enter the code, and you see that club's boats and races. Anyone with the code can view and edit, and new results appear without refreshing. The browser remembers the code until you click **Change club**.
 
-If `js/config.js` has no Supabase settings, the app falls back to storing data in the current browser only.
+If `js/config.js` has no Supabase settings, there are no clubs and the app stores data in the current browser only.
 
 ### Supabase setup (one-off)
 
 1. Create a free project at <https://supabase.com>.
 2. **SQL Editor → New query**: paste `supabase/schema.sql` and run it.
-3. **Authentication → URL Configuration**: set *Site URL* to `https://mikebarr24.github.io/nhc-app/` and add the same URL (plus `http://localhost:8000/` for local testing) under *Redirect URLs*.
-4. **Project Settings → API**: copy the *Project URL* and the *anon* / *publishable* key into `js/config.js`, then commit and push.
+3. **Project Settings → API**: copy the *Project URL* and the *anon* / *publishable* key into `js/config.js`, then commit and push.
 
-The anon key is meant to be public. The database rules in `schema.sql` allow anyone to read, but only signed-in users can change anything. To stop new people signing up, turn off **Authentication → Sign In / Providers → Allow new users to sign up** once your group has signed in once.
+The publishable key is meant to be public. The database rules in `schema.sql` only return or change rows for the club whose code comes with the request.
+
+### Adding a club
+
+In **SQL Editor**, run:
+
+```sql
+insert into public.clubs (name, code) values ('My Sailing Club', 'some-long-code');
+```
+
+Codes are case-insensitive and need at least 6 characters. Anyone can try codes on the landing page, so use something hard to guess, not the club's initials.
 
 ## How the calculation works
 
@@ -54,5 +63,5 @@ npm test                      # unit tests for the NHC maths (Node 20+)
 - `js/app.js`: UI.
 - `js/store.js`: storage (Supabase or browser).
 - `js/config.js`: Supabase project settings.
-- `supabase/schema.sql`: database tables and access rules.
+- `supabase/schema.sql`: database tables, access rules and how to add a club.
 - `test/nhc.test.js`: tests.

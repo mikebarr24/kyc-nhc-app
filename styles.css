@@ -50,10 +50,12 @@ h2 { font-size: 18px; margin: 0 0 12px; }
 h3 { font-size: 15px; margin: 16px 0 8px; }
 
 nav { display: flex; gap: 4px; flex-wrap: wrap; }
+nav[hidden] { display: none; }
 
 #account { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; }
-.signin { display: flex; gap: 6px; }
-.signin input { width: 15em; }
+.landing { max-width: 420px; margin: 48px auto; }
+.landing input { flex: 1; min-width: 0; }
+.landing .row { flex-wrap: nowrap; }
 .error { color: var(--up); }
 body.busy main { opacity: 0.6; pointer-events: none; }
 
