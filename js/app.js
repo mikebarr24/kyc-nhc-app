@@ -179,13 +179,15 @@ function fleetView({ current }) {
     }
     ${
       edit
-        ? `<h3>Add a boat</h3>
+        ? `<details class="add-boat" data-panel="add-boat" ${view.addBoat ?? !data.boats.length ? "open" : ""}>
+          <summary>Add a boat</summary>
           <form class="row" data-form="add-boat">
             <label>Boat name<input name="name" required /></label>
             <label>Sail no.<input name="sailNo" class="num" /></label>
             <label>Base handicap<input name="h0" required class="num" inputmode="decimal" placeholder="0.950" /></label>
             <button class="primary" type="submit">Add boat</button>
-          </form>`
+          </form>
+        </details>`
         : ""
     }
   </section>`;
@@ -501,6 +503,15 @@ document.addEventListener("change", (ev) => {
     importData(el.files[0]);
   }
 });
+
+// Remember whether "Add a boat" is open, since saving re-renders the fleet.
+document.addEventListener(
+  "toggle",
+  (ev) => {
+    if (ev.target.dataset?.panel === "add-boat") view.addBoat = ev.target.open;
+  },
+  true,
+);
 
 // Update elapsed preview while typing without re-rendering (keeps focus).
 document.addEventListener("input", (ev) => {

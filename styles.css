@@ -143,6 +143,26 @@ button.info { width: 2.2em; height: 2.2em; padding: 0; border-radius: 50%; color
 #codes dt { font-weight: 600; }
 #codes dd { margin: 0; }
 
+details.add-boat { margin-top: 12px; }
+details.add-boat summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+details.add-boat summary::-webkit-details-marker { display: none; }
+details.add-boat summary::before { content: "+"; font-size: 18px; line-height: 1; }
+details.add-boat[open] summary::before { content: "−"; }
+details.add-boat form { margin-top: 12px; }
+
 .hint { color: var(--muted); font-size: 13px; margin: 4px 0 12px; }
 .empty { color: var(--muted); padding: 24px 0; text-align: center; }
 
