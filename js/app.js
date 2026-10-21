@@ -6,37 +6,39 @@ import {
   elapsedBetween,
   formatDuration,
 } from "./nhc.js";
-
-const STORAGE_KEY = "kyc-nhc-data-v1";
+import { createStore } from "./store.js";
 
 // ---- state ----
 
-let data = load();
+let store;
+let data = { boats: [], races: [] };
 let view = { tab: "races", raceId: null, draft: null };
+let status = { loading: true, error: null, busy: false, signInSent: null };
 
-function load() {
+const canEdit = () => !!store?.user();
+
+async function reload() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return normalise(JSON.parse(raw));
-  } catch {
-    // fall through to empty data
+    data = await store.load();
+    status.error = null;
+  } catch (e) {
+    status.error = `Couldn't load results: ${e.message}`;
   }
-  return { boats: [], races: [] };
+  status.loading = false;
+  render();
 }
 
-function save() {
+// Run a store write, then reload so every view reflects what was saved.
+async function persist(fn) {
+  status.busy = true;
+  render();
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    alert("Could not save to this browser's storage. Use Data → Export to keep a copy.");
+    await fn();
+  } catch (e) {
+    alert(`Couldn't save: ${e.message}`);
   }
-}
-
-function normalise(d) {
-  return {
-    boats: Array.isArray(d?.boats) ? d.boats : [],
-    races: Array.isArray(d?.races) ? d.races : [],
-  };
+  status.busy = false;
+  await reload();
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -98,26 +100,51 @@ function raceTitle(race) {
 
 function render() {
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === view.tab));
+  document.getElementById("account").innerHTML = accountView();
   const app = document.getElementById("app");
+  if (status.loading) return (app.innerHTML = `<p class="empty">Loading…</p>`);
+  const banner = status.error ? `<p class="panel error">${esc(status.error)}</p>` : "";
   const results = compute();
-  if (view.tab === "fleet") app.innerHTML = fleetView(results);
-  else if (view.tab === "handicaps") app.innerHTML = handicapsView(results);
-  else if (view.tab === "data") app.innerHTML = dataView();
-  else if (view.draft) app.innerHTML = raceEditor();
-  else if (view.raceId && data.races.some((r) => r.id === view.raceId)) app.innerHTML = raceResults(results);
-  else app.innerHTML = raceList(results);
+  let body;
+  if (view.tab === "fleet") body = fleetView(results);
+  else if (view.tab === "handicaps") body = handicapsView(results);
+  else if (view.tab === "data") body = dataView();
+  else if (view.draft && canEdit()) body = raceEditor();
+  else if (view.raceId && data.races.some((r) => r.id === view.raceId)) body = raceResults(results);
+  else body = raceList(results);
+  app.innerHTML = banner + body;
+  document.body.classList.toggle("busy", status.busy);
+}
+
+function accountView() {
+  if (!store?.shared) return "";
+  const user = store.user();
+  if (user) {
+    return `<span class="muted">${esc(user.email)}</span> <button data-action="sign-out">Sign out</button>`;
+  }
+  if (status.signInSent) return `<span class="muted">Check ${esc(status.signInSent)} for a sign-in link</span>`;
+  return `<form data-form="sign-in" class="signin">
+    <input type="email" name="email" required placeholder="Email to sign in and edit" />
+    <button type="submit">Send link</button>
+  </form>`;
 }
 
 function fleetView({ current }) {
+  const edit = canEdit();
   const rows = data.boats
-    .map(
-      (b) => `<tr>
-        <td><input value="${esc(b.name)}" data-boat-field="name" data-id="${b.id}" /></td>
-        <td><input value="${esc(b.sailNo || "")}" data-boat-field="sailNo" data-id="${b.id}" class="num" /></td>
-        <td class="n"><input value="${b.h0}" data-boat-field="h0" data-id="${b.id}" class="num" inputmode="decimal" /></td>
-        <td class="n">${h(current.get(b.id))}</td>
-        <td><button class="danger" data-action="delete-boat" data-id="${b.id}">Remove</button></td>
-      </tr>`,
+    .map((b) =>
+      edit
+        ? `<tr>
+            <td><input value="${esc(b.name)}" data-boat-field="name" data-id="${b.id}" /></td>
+            <td><input value="${esc(b.sailNo || "")}" data-boat-field="sailNo" data-id="${b.id}" class="num" /></td>
+            <td class="n"><input value="${b.h0}" data-boat-field="h0" data-id="${b.id}" class="num" inputmode="decimal" /></td>
+            <td class="n">${h(current.get(b.id))}</td>
+            <td><button class="danger" data-action="delete-boat" data-id="${b.id}">Remove</button></td>
+          </tr>`
+        : `<tr>
+            <td>${esc(b.name)}</td><td>${esc(b.sailNo || "")}</td>
+            <td class="n">${h(b.h0)}</td><td class="n">${h(current.get(b.id))}</td><td></td>
+          </tr>`,
     )
     .join("");
   return `<section class="panel">
@@ -128,19 +155,28 @@ function fleetView({ current }) {
         ? `<div class="table-wrap"><table>
             <thead><tr><th>Boat</th><th>Sail no.</th><th class="n">Base H0</th><th class="n">Current</th><th></th></tr></thead>
             <tbody>${rows}</tbody></table></div>`
-        : `<p class="empty">No boats yet. Add the first one below.</p>`
+        : `<p class="empty">No boats yet.${edit ? " Add the first one below." : ""}</p>`
     }
-    <h3>Add a boat</h3>
-    <form class="row" data-form="add-boat">
-      <label>Boat name<input name="name" required /></label>
-      <label>Sail no.<input name="sailNo" class="num" /></label>
-      <label>Base handicap<input name="h0" required class="num" inputmode="decimal" placeholder="0.950" /></label>
-      <button class="primary" type="submit">Add boat</button>
-    </form>
+    ${
+      edit
+        ? `<h3>Add a boat</h3>
+          <form class="row" data-form="add-boat">
+            <label>Boat name<input name="name" required /></label>
+            <label>Sail no.<input name="sailNo" class="num" /></label>
+            <label>Base handicap<input name="h0" required class="num" inputmode="decimal" placeholder="0.950" /></label>
+            <button class="primary" type="submit">Add boat</button>
+          </form>`
+        : signInHint()
+    }
   </section>`;
 }
 
+function signInHint() {
+  return store.shared ? `<p class="hint">Sign in at the top of the page to add or edit boats and races.</p>` : "";
+}
+
 function raceList({ races, byRace }) {
+  const edit = canEdit();
   const rows = [...races]
     .reverse()
     .map((race) => {
@@ -155,18 +191,24 @@ function raceList({ races, byRace }) {
       </tr>`;
     })
     .join("");
+  let empty = "";
+  if (data.boats.length === 0) {
+    empty = edit
+      ? `<p class="empty">Add your boats on the <button class="link" data-tab="fleet">Fleet</button> tab first.</p>`
+      : `<p class="empty">No results yet.</p>`;
+  } else if (!races.length) {
+    empty = `<p class="empty">No races yet.</p>`;
+  }
   return `<section class="panel">
     <h2>Races</h2>
     ${
-      data.boats.length === 0
-        ? `<p class="empty">Add your boats on the <button class="link" data-action="tab" data-tab="fleet">Fleet</button> tab first.</p>`
-        : races.length
-          ? `<div class="table-wrap"><table>
-              <thead><tr><th>Race</th><th>Date</th><th class="n">Finishers</th><th>Winner</th></tr></thead>
-              <tbody>${rows}</tbody></table></div>`
-          : `<p class="empty">No races yet.</p>`
+      empty ||
+      `<div class="table-wrap"><table>
+        <thead><tr><th>Race</th><th>Date</th><th class="n">Finishers</th><th>Winner</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`
     }
-    ${data.boats.length ? `<div class="actions"><button class="primary" data-action="new-race">New race</button></div>` : ""}
+    ${edit && data.boats.length ? `<div class="actions"><button class="primary" data-action="new-race">New race</button></div>` : ""}
+    ${edit ? "" : signInHint()}
   </section>`;
 }
 
@@ -219,9 +261,9 @@ function raceResults({ byRace }) {
     <p class="hint">Highlighted boats were extreme performers (corrected time more than one standard deviation from the mean), so their handicap change is capped.
     New handicaps include realignment, so they're the ones to use in the next race.</p>
     <div class="actions">
-      <button data-action="edit-race" data-id="${race.id}">Edit</button>
+      ${canEdit() ? `<button data-action="edit-race" data-id="${race.id}">Edit</button>` : ""}
       <button data-action="print">Print</button>
-      <button class="danger" data-action="delete-race" data-id="${race.id}">Delete race</button>
+      ${canEdit() ? `<button class="danger" data-action="delete-race" data-id="${race.id}">Delete race</button>` : ""}
     </div>
   </section>`;
 }
@@ -295,15 +337,23 @@ function handicapsView({ races, byRace, current }) {
 }
 
 function dataView() {
+  const edit = canEdit();
+  const hint = store.shared
+    ? "Results are shared: everyone who opens this page sees the same data. Export a file now and then as a backup."
+    : "Everything is saved in this browser only. To move to another device, export a file and import it there.";
   return `<section class="panel">
     <h2>Data</h2>
-    <p class="hint">Everything is saved in this browser only. To share results or move to another device, export a file and import it there.
-    Whoever keeps the results should export after each race and share the file with the group.</p>
+    <p class="hint">${hint}</p>
     <div class="actions">
       <button class="primary" data-action="export">Export data file</button>
-      <label class="button">Import data file<input type="file" accept="application/json,.json" data-action="import" hidden /></label>
-      <button class="danger" data-action="clear">Clear everything</button>
+      ${
+        edit
+          ? `<label class="button">Import data file<input type="file" accept="application/json,.json" data-action="import" hidden /></label>
+             <button class="danger" data-action="clear">Clear everything</button>`
+          : ""
+      }
     </div>
+    ${edit && store.shared ? `<p class="hint">Importing replaces all shared boats and races with the contents of the file.</p>` : ""}
   </section>`;
 }
 
@@ -317,7 +367,7 @@ function startDraft(race) {
     : { id: uid(), date: new Date().toISOString().slice(0, 10), name: `Race ${data.races.length + 1}`, timeMode: "elapsed", start: "", entries, isNew: true };
 }
 
-function saveDraft() {
+async function saveDraft() {
   const d = view.draft;
   if (d.timeMode === "finish" && parseClock(d.start) == null) return alert("Enter a valid start time (hh:mm or hh:mm:ss).");
   const bad = data.boats.filter((b) => d.entries[b.id]?.status === "FIN" && raceElapsed(d, d.entries[b.id]) == null);
@@ -325,17 +375,13 @@ function saveDraft() {
 
   const { isNew, ...race } = d;
   race.entries = Object.fromEntries(Object.entries(race.entries).filter(([, e]) => e.status !== "DNC"));
-  const i = data.races.findIndex((r) => r.id === race.id);
-  if (i >= 0) data.races[i] = race;
-  else data.races.push(race);
-  save();
   view = { tab: "races", raceId: race.id, draft: null };
-  render();
+  await persist(() => store.saveRace(race));
 }
 
 document.addEventListener("click", (ev) => {
   const el = ev.target.closest("[data-tab], [data-action]");
-  if (!el || el.tagName === "INPUT") return;
+  if (!el || el.tagName === "INPUT" || status.busy) return;
   if (el.dataset.tab) {
     view = { tab: el.dataset.tab, raceId: null, draft: null };
     return render();
@@ -361,58 +407,63 @@ document.addEventListener("click", (ev) => {
       return saveDraft();
     case "delete-race":
       if (!confirm("Delete this race? Handicaps for later races will be recalculated.")) return;
-      data.races = data.races.filter((r) => r.id !== id);
       view.raceId = null;
-      save();
-      break;
+      return persist(() => store.deleteRace(id));
     case "delete-boat": {
       const raced = data.races.some((r) => r.entries?.[id]);
       if (!confirm(raced ? "This boat has race results. Removing it deletes them and recalculates everyone's handicaps. Continue?" : "Remove this boat?")) return;
-      data.boats = data.boats.filter((b) => b.id !== id);
-      data.races.forEach((r) => delete r.entries?.[id]);
-      save();
-      break;
+      return persist(() => store.deleteBoat(id));
     }
     case "print":
       return window.print();
     case "export":
       return exportData();
     case "clear":
-      if (!confirm("Delete all boats and races from this browser? Export first if you want a copy.")) return;
-      data = { boats: [], races: [] };
-      save();
-      break;
+      if (!confirm(store.shared ? "Delete ALL boats and races for everyone? Export first if you want a copy." : "Delete all boats and races from this browser? Export first if you want a copy.")) return;
+      return persist(() => store.replaceAll({ boats: [], races: [] }));
+    case "sign-out":
+      return store.signOut();
     default:
       return;
   }
   render();
 });
 
-document.addEventListener("submit", (ev) => {
-  if (ev.target.dataset.form !== "add-boat") return;
+document.addEventListener("submit", async (ev) => {
+  const form = ev.target.dataset.form;
+  if (!form) return;
   ev.preventDefault();
   const f = new FormData(ev.target);
-  const h0 = Number(String(f.get("h0")).trim());
-  if (!(h0 > 0)) return alert("Base handicap must be a positive number, e.g. 0.950");
-  data.boats.push({ id: uid(), name: String(f.get("name")).trim(), sailNo: String(f.get("sailNo")).trim(), h0 });
-  save();
-  render();
-  document.querySelector('[data-form="add-boat"] input[name="name"]')?.focus();
+  if (form === "sign-in") {
+    const email = String(f.get("email")).trim();
+    try {
+      await store.signIn(email);
+      status.signInSent = email;
+      render();
+    } catch (e) {
+      alert(`Couldn't send sign-in link: ${e.message}`);
+    }
+  } else if (form === "add-boat") {
+    const h0 = Number(String(f.get("h0")).trim());
+    if (!(h0 > 0)) return alert("Base handicap must be a positive number, e.g. 0.950");
+    const boat = { id: uid(), name: String(f.get("name")).trim(), sailNo: String(f.get("sailNo")).trim(), h0 };
+    await persist(() => store.saveBoat(boat));
+    document.querySelector('[data-form="add-boat"] input[name="name"]')?.focus();
+  }
 });
 
 document.addEventListener("change", (ev) => {
   const el = ev.target;
   if (el.dataset.boatField) {
-    const b = boatById(el.dataset.id);
+    const boat = { ...boatById(el.dataset.id) };
     if (el.dataset.boatField === "h0") {
       const v = Number(el.value.trim());
       if (!(v > 0)) return alert("Base handicap must be a positive number.");
-      b.h0 = v;
+      boat.h0 = v;
     } else {
-      b[el.dataset.boatField] = el.value.trim();
+      boat[el.dataset.boatField] = el.value.trim();
     }
-    save();
-    render();
+    persist(() => store.saveBoat(boat));
   } else if (el.dataset.draft) {
     view.draft[el.dataset.draft] = el.value;
     render();
@@ -450,17 +501,36 @@ function exportData() {
 
 async function importData(file) {
   if (!file) return;
+  let parsed;
   try {
-    const parsed = JSON.parse(await file.text());
+    parsed = JSON.parse(await file.text());
     if (!Array.isArray(parsed.boats) || !Array.isArray(parsed.races)) throw new Error("not an NHC data file");
-    if ((data.boats.length || data.races.length) && !confirm("Replace the data in this browser with the imported file?")) return;
-    data = normalise(parsed);
-    save();
-    view = { tab: "races", raceId: null, draft: null };
-    render();
   } catch (e) {
-    alert(`Couldn't import that file: ${e.message}`);
+    return alert(`Couldn't import that file: ${e.message}`);
   }
+  if ((data.boats.length || data.races.length) && !confirm(store.shared ? "Replace ALL shared results with the imported file?" : "Replace the data in this browser with the imported file?")) return;
+  view = { tab: "races", raceId: null, draft: null };
+  await persist(() => store.replaceAll({ boats: parsed.boats, races: parsed.races }));
 }
 
-render();
+// ---- start ----
+
+(async () => {
+  render();
+  try {
+    store = await createStore();
+  } catch (e) {
+    status.loading = false;
+    status.error = `Couldn't connect to the results database: ${e.message}`;
+    return render();
+  }
+  store.onAuthChange(() => {
+    status.signInSent = null;
+    render();
+  });
+  store.onRemoteChange(() => {
+    // Don't yank an in-progress race entry out from under the editor.
+    if (!view.draft) reload();
+  });
+  await reload();
+})();

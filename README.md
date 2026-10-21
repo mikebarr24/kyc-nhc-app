@@ -15,7 +15,18 @@ Results are recalculated from the first race every time, so fixing a time in an 
 
 ### Sharing results
 
-Data is stored in the browser you're using. The person keeping results can use **Data → Export** after each race and share the file; anyone can **Import** it to see the same results.
+Results are stored in a [Supabase](https://supabase.com) database, so everyone who opens the site sees the same data and new results appear without refreshing. Anyone can view; to edit, enter your email at the top of the page and click the sign-in link you're sent.
+
+If `js/config.js` has no Supabase settings, the app falls back to storing data in the current browser only.
+
+### Supabase setup (one-off)
+
+1. Create a free project at <https://supabase.com>.
+2. **SQL Editor → New query**: paste `supabase/schema.sql` and run it.
+3. **Authentication → URL Configuration**: set *Site URL* to `https://mikebarr24.github.io/kyc-nhc-app/` and add the same URL (plus `http://localhost:8000/` for local testing) under *Redirect URLs*.
+4. **Project Settings → API**: copy the *Project URL* and the *anon* / *publishable* key into `js/config.js`, then commit and push.
+
+The anon key is meant to be public. The database rules in `schema.sql` allow anyone to read, but only signed-in users can change anything. To stop new people signing up, turn off **Authentication → Sign In / Providers → Allow new users to sign up** once your group has signed in once.
 
 ## How the calculation works
 
@@ -40,5 +51,8 @@ npm test                      # unit tests for the NHC maths (Node 20+)
 ```
 
 - `js/nhc.js`: NHC calculations, no DOM.
-- `js/app.js`: UI and storage.
+- `js/app.js`: UI.
+- `js/store.js`: storage (Supabase or browser).
+- `js/config.js`: Supabase project settings.
+- `supabase/schema.sql`: database tables and access rules.
 - `test/nhc.test.js`: tests.

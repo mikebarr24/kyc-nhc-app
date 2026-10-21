@@ -51,6 +51,12 @@ h3 { font-size: 15px; margin: 16px 0 8px; }
 
 nav { display: flex; gap: 4px; flex-wrap: wrap; }
 
+#account { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.signin { display: flex; gap: 6px; }
+.signin input { width: 15em; }
+.error { color: var(--up); }
+body.busy main { opacity: 0.6; pointer-events: none; }
+
 main { max-width: 1000px; margin: 0 auto; padding: 16px; }
 
 footer { max-width: 1000px; margin: 0 auto; padding: 16px; color: var(--muted); font-size: 13px; }
