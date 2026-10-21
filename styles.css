@@ -174,7 +174,11 @@ table.results.cards .c-h1 { order: 5; }
 table.results.cards .c-achieved { order: 6; }
 table.results.cards .c-note { order: 7; flex-basis: 100% !important; font-size: 13px; }
 
-table.entries.cards td.time-cell { flex: 1; }
+table.entries.cards td:has(select) { flex: 1 1 10em; }
+table.entries.cards select { width: 100%; }
+table.entries.cards td.time-cell { flex: 1 1 7em; }
+/* With elapsed times typed in, the preview would just repeat them. */
+table.entries.cards:not(.finish) td[data-elapsed] { display: none; }
 table.entries.cards input.time { width: 100%; }
 
 /* Name and Remove on the first line, then sail no., H0 and current. */
