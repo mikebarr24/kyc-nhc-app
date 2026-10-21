@@ -87,8 +87,10 @@ button.danger { color: var(--up); }
 button.link { border: none; background: none; color: var(--accent); padding: 0; text-align: left; }
 .tab.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 
+/* Inputs stay at 16px or more everywhere: iOS zooms in on anything smaller when it's tapped. */
 input, select {
   font: inherit;
+  font-size: 16px;
   padding: 5px 8px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -145,8 +147,6 @@ table.sticky-first td:first-child {
   .panel { padding: 12px; }
   .landing { margin: 24px auto; }
 
-  /* 16px stops iOS zooming in when a box is tapped. */
-  input, select { font-size: 16px; }
   .row label { flex: 1 1 9em; }
   .row label input, .row label select { width: 100%; }
 
