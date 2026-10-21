@@ -112,8 +112,79 @@ tr.extreme td { background: var(--flag); }
 .up { color: var(--up); }
 .down { color: var(--down); }
 .muted { color: var(--muted); }
+.small { font-size: 13px; }
+table.wrap td { white-space: normal; }
+
+/* Keep the boat column in view while the race columns scroll sideways. */
+table.sticky-first th:first-child,
+table.sticky-first td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--panel);
+  white-space: normal;
+  min-width: 8em;
+}
 .hint { color: var(--muted); font-size: 13px; margin: 4px 0 12px; }
 .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+
+/* Phones */
+@media (max-width: 600px) {
+  header { padding: 10px 12px; gap: 8px 12px; }
+  h1 { font-size: 18px; }
+  /* Once a club is open its name says more than the app's. */
+  header:has(#account strong) h1 { display: none; }
+  nav { order: 3; width: 100%; }
+  nav button { flex: 1; padding-left: 4px; padding-right: 4px; }
+  #account { flex: 1; min-width: 0; justify-content: space-between; font-size: 15px; }
+  #account strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #account button { flex-shrink: 0; }
+
+  main { padding: 10px; }
+  footer { padding: 10px; }
+  .panel { padding: 12px; }
+  .landing { margin: 24px auto; }
+
+  /* 16px stops iOS zooming in when a box is tapped. */
+  input, select { font-size: 16px; }
+  .row label { flex: 1 1 9em; }
+  .row label input, .row label select { width: 100%; }
+
+  /* Tables marked .stack become one card per row: the .lead cell on its own line, then labelled values. */
+  table.stack thead { display: none; }
+  table.stack tr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 0; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  table.stack td { border: 0; padding: 0 8px 0 0; white-space: normal; text-align: left; }
+  table.stack td:empty { display: none; }
+  table.stack td.lead { flex: 1 0 100%; font-weight: 600; }
+  table.stack td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: normal; color: var(--muted); }
+  table.stack tr.extreme { background: var(--flag); }
+  table.stack tr.extreme td { background: none; }
+
+  table.results td.place { flex: 0 0 2.5em; font-weight: 600; }
+  table.results td.lead { flex-basis: calc(100% - 2.5em); }
+  table.results td:not(.place):not(.lead) { flex: 0 0 33.333%; }
+  table.results .c-corrected { order: 1; }
+  table.results .c-new { order: 2; }
+  table.results .c-change { order: 3; }
+  table.results .c-elapsed { order: 4; }
+  table.results .c-h1 { order: 5; }
+  table.results .c-achieved { order: 6; }
+  table.results .c-note { order: 7; flex-basis: 100% !important; font-size: 13px; }
+
+  table.entries td.time-cell { flex: 1; }
+  table.entries input.time { width: 100%; }
+
+  table.fleet td.lead input { width: 100%; font-weight: 600; }
+  table.fleet td:not(.lead) { flex: 1 1 0; }
+  table.fleet td[data-label="Sail no."] { flex-grow: 1.4; }
+  table.fleet td input.num { width: 100%; }
+  table.fleet td.end { flex: 0 0 auto; align-self: end; }
+}
+
+/* Bigger tap targets on touch screens. */
+@media (pointer: coarse) {
+  button:not(.link), .button, input, select { min-height: 40px; }
+}
 
 @media print {
   header nav, .actions, footer, .no-print { display: none !important; }

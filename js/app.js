@@ -142,15 +142,15 @@ function fleetView({ current }) {
     .map((b) =>
       edit
         ? `<tr>
-            <td><input value="${esc(b.name)}" data-boat-field="name" data-id="${b.id}" /></td>
-            <td><input value="${esc(b.sailNo || "")}" data-boat-field="sailNo" data-id="${b.id}" class="num" /></td>
-            <td class="n"><input value="${b.h0}" data-boat-field="h0" data-id="${b.id}" class="num" inputmode="decimal" /></td>
-            <td class="n">${h(current.get(b.id))}</td>
-            <td><button class="danger" data-action="delete-boat" data-id="${b.id}">Remove</button></td>
+            <td class="lead"><input value="${esc(b.name)}" data-boat-field="name" data-id="${b.id}" aria-label="Boat name" /></td>
+            <td data-label="Sail no."><input value="${esc(b.sailNo || "")}" data-boat-field="sailNo" data-id="${b.id}" class="num" /></td>
+            <td class="n" data-label="Base H0"><input value="${b.h0}" data-boat-field="h0" data-id="${b.id}" class="num" inputmode="decimal" /></td>
+            <td class="n" data-label="Current">${h(current.get(b.id))}</td>
+            <td class="end"><button class="danger" data-action="delete-boat" data-id="${b.id}">Remove</button></td>
           </tr>`
         : `<tr>
-            <td>${esc(b.name)}</td><td>${esc(b.sailNo || "")}</td>
-            <td class="n">${h(b.h0)}</td><td class="n">${h(current.get(b.id))}</td><td></td>
+            <td class="lead">${esc(b.name)}</td><td data-label="Sail no.">${esc(b.sailNo || "")}</td>
+            <td class="n" data-label="Base H0">${h(b.h0)}</td><td class="n" data-label="Current">${h(current.get(b.id))}</td><td></td>
           </tr>`,
     )
     .join("");
@@ -159,7 +159,7 @@ function fleetView({ current }) {
     <p class="hint">Base handicap (H0) is the boat's NHC base number from the RYA certificate. The current handicap is what it will sail off in the next race.</p>
     ${
       data.boats.length
-        ? `<div class="table-wrap"><table>
+        ? `<div class="table-wrap"><table class="stack fleet">
             <thead><tr><th>Boat</th><th>Sail no.</th><th class="n">Base H0</th><th class="n">Current</th><th></th></tr></thead>
             <tbody>${rows}</tbody></table></div>`
         : `<p class="empty">No boats yet.${edit ? " Add the first one below." : ""}</p>`
@@ -187,8 +187,7 @@ function raceList({ races, byRace }) {
       const finishers = rows.filter((r) => r.place != null).sort((a, b) => a.place - b.place);
       const winner = finishers[0] ? boatById(finishers[0].boatId) : null;
       return `<tr>
-        <td><button class="link" data-action="open-race" data-id="${race.id}">${esc(race.name || "Race")}</button></td>
-        <td>${esc(race.date || "")}</td>
+        <td><button class="link" data-action="open-race" data-id="${race.id}">${esc(race.name || "Race")}</button>${race.date ? `<div class="muted small">${esc(race.date)}</div>` : ""}</td>
         <td class="n">${finishers.length}</td>
         <td>${winner ? boatLabel(winner) : '<span class="muted">-</span>'}</td>
       </tr>`;
@@ -206,8 +205,8 @@ function raceList({ races, byRace }) {
     <h2>Races</h2>
     ${
       empty ||
-      `<div class="table-wrap"><table>
-        <thead><tr><th>Race</th><th>Date</th><th class="n">Finishers</th><th>Winner</th></tr></thead>
+      `<div class="table-wrap"><table class="wrap">
+        <thead><tr><th>Race</th><th class="n">Finishers</th><th>Winner</th></tr></thead>
         <tbody>${rows}</tbody></table></div>`
     }
     ${edit && data.boats.length ? `<div class="actions"><button class="primary" data-action="new-race">New race</button></div>` : ""}
@@ -224,26 +223,26 @@ function raceResults({ byRace }) {
   const finRows = finishers
     .map(
       (r) => `<tr class="${r.extreme ? "extreme" : ""}">
-        <td class="n">${r.place}</td>
-        <td>${boatLabel(boatById(r.boatId))}</td>
-        <td class="n">${formatDuration(r.elapsed)}</td>
-        <td class="n">${h(r.h1)}</td>
-        <td class="n"><strong>${formatDuration(r.corrected)}</strong></td>
-        <td class="n">${h(r.achieved)}</td>
-        <td>${r.extreme ? `Extreme ${r.extreme}` : ""}</td>
-        <td class="n">${h(r.h2)}</td>
-        <td class="n">${change(r.h1, r.h2)}</td>
+        <td class="n place">${r.place}</td>
+        <td class="lead">${boatLabel(boatById(r.boatId))}</td>
+        <td class="n c-elapsed" data-label="Elapsed">${formatDuration(r.elapsed)}</td>
+        <td class="n c-h1" data-label="Handicap">${h(r.h1)}</td>
+        <td class="n c-corrected" data-label="Corrected"><strong>${formatDuration(r.corrected)}</strong></td>
+        <td class="n c-achieved" data-label="Achieved">${h(r.achieved)}</td>
+        <td class="c-note">${r.extreme ? `Extreme ${r.extreme}` : ""}</td>
+        <td class="n c-new" data-label="New handicap">${h(r.h2)}</td>
+        <td class="n c-change" data-label="Change">${change(r.h1, r.h2)}</td>
       </tr>`,
     )
     .join("");
   const otherRows = [...others, ...dnc]
     .map(
       (r) => `<tr>
-        <td class="n">${r.status}</td>
-        <td>${boatLabel(boatById(r.boatId))}</td>
-        <td></td><td class="n">${h(r.h1)}</td><td></td><td></td><td></td>
-        <td class="n">${h(r.h2)}</td>
-        <td class="n">${change(r.h1, r.h2)}</td>
+        <td class="n place">${r.status}</td>
+        <td class="lead">${boatLabel(boatById(r.boatId))}</td>
+        <td></td><td class="n c-h1" data-label="Handicap">${h(r.h1)}</td><td></td><td></td><td></td>
+        <td class="n c-new" data-label="New handicap">${h(r.h2)}</td>
+        <td class="n c-change" data-label="Change">${change(r.h1, r.h2)}</td>
       </tr>`,
     )
     .join("");
@@ -253,7 +252,7 @@ function raceResults({ byRace }) {
       <button data-action="back">← All races</button>
     </div>
     <h2>${raceTitle(race)}</h2>
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="stack results">
       <thead><tr>
         <th class="n">Place</th><th>Boat</th><th class="n">Elapsed</th><th class="n">Handicap</th>
         <th class="n">Corrected</th><th class="n">Achieved</th><th></th><th class="n">New handicap</th><th class="n">Change</th>
@@ -279,11 +278,11 @@ function raceEditor() {
       const elapsed = e.status === "FIN" ? raceElapsed(d, e) : null;
       const invalid = e.status === "FIN" && e.time && elapsed == null;
       return `<tr>
-        <td>${boatLabel(b)}</td>
-        <td><select data-entry="status" data-id="${b.id}">
+        <td class="lead">${boatLabel(b)}</td>
+        <td><select data-entry="status" data-id="${b.id}" aria-label="Result">
           ${STATUSES.map((s) => `<option ${s === e.status ? "selected" : ""}>${s}</option>`).join("")}
         </select></td>
-        <td><input class="time ${invalid ? "invalid" : ""}" data-entry="time" data-id="${b.id}" value="${esc(e.time)}"
+        <td class="time-cell"><input class="time ${invalid ? "invalid" : ""}" data-entry="time" data-id="${b.id}" value="${esc(e.time)}" inputmode="decimal" aria-label="Time"
           placeholder="${finishMode ? "hh:mm:ss" : "h:mm:ss"}" ${e.status === "FIN" ? "" : "disabled"} /></td>
         <td class="n muted" data-elapsed="${b.id}">${elapsed != null ? formatDuration(elapsed) : ""}</td>
       </tr>`;
@@ -300,10 +299,10 @@ function raceEditor() {
           <option value="finish" ${finishMode ? "selected" : ""}>Finish clock times</option>
         </select>
       </label>
-      ${finishMode ? `<label>Start time<input class="time" data-draft="start" value="${esc(d.start)}" placeholder="hh:mm:ss" /></label>` : ""}
+      ${finishMode ? `<label>Start time<input class="time" data-draft="start" value="${esc(d.start)}" placeholder="hh:mm:ss" inputmode="decimal" /></label>` : ""}
     </div>
-    <p class="hint">Set each boat that raced to FIN and enter its time. Leave boats that didn't come out as DNC. Any other code (DNF, RET…) counts as taking part but keeps the boat's handicap.</p>
-    <div class="table-wrap"><table>
+    <p class="hint">Set each boat that raced to FIN and enter its time. Leave boats that didn't come out as DNC. Any other code (DNF, RET…) counts as taking part but keeps the boat's handicap. Times can be typed with dots instead of colons, e.g. 1.12.30.</p>
+    <div class="table-wrap"><table class="stack entries">
       <thead><tr><th>Boat</th><th>Result</th><th>${finishMode ? "Finish time" : "Elapsed time"}</th><th class="n">Elapsed</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
@@ -331,7 +330,7 @@ function handicapsView({ races, byRace, current }) {
   return `<section class="panel">
     <h2>Handicap progression</h2>
     <p class="hint">Handicap after each race (place in brackets). The last column is the handicap for the next race.</p>
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="sticky-first">
       <thead><tr><th>Boat</th><th class="n">Base</th>${head}<th class="n">Next race</th></tr></thead>
       <tbody>${body}</tbody>
     </table></div>
