@@ -9,8 +9,6 @@
   --up: #b42318;
   --down: #067647;
   --flag: #fff4d6;
-  --panel-see-through: rgb(255 255 255 / 0.85);
-  --watermark-opacity: 0.07;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,8 +23,6 @@
     --up: #f97066;
     --down: #47cd89;
     --flag: #3a3220;
-    --panel-see-through: rgb(23 33 43 / 0.88);
-    --watermark-opacity: 0.09;
   }
 }
 
@@ -39,19 +35,8 @@ body {
   color: var(--text);
 }
 
-/* Club burgee watermark, fixed behind everything. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background: url("img/burgee-tile.svg") 0 0 / 360px auto repeat;
-  opacity: var(--watermark-opacity);
-  pointer-events: none;
-}
-
 header {
-  background: var(--panel-see-through);
+  background: var(--panel);
   border-bottom: 1px solid var(--border);
   padding: 12px 16px;
   display: flex;
@@ -79,7 +64,7 @@ footer { max-width: 1000px; margin: 0 auto; padding: 16px; color: var(--muted); 
 a { color: var(--accent); }
 
 .panel {
-  background: var(--panel-see-through);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
@@ -131,6 +116,5 @@ tr.extreme td { background: var(--flag); }
 @media print {
   header nav, .actions, footer, .no-print { display: none !important; }
   body { background: #fff; color: #000; }
-  body::before { display: none; }
   .panel { border: none; padding: 0; }
 }
